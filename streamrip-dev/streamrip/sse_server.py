@@ -10,6 +10,10 @@ from uuid import uuid4
 from pydantic import BaseModel
 import uuid
 from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+from .cover_api import add_cover_api_endpoints
+from fastapi.responses import FileResponse
+import os
 
 # Suppress uvicorn logging
 for logger_name in ["uvicorn", "uvicorn.access", "uvicorn.error", "fastapi", "starlette"]:
@@ -220,8 +224,7 @@ class SSEServer:
             @self.app.get("/")
             async def serve_ui():
                 """Serve the web UI from file."""
-                import os
-                from fastapi.responses import FileResponse
+
                 
                 # Look for web/index.html relative to the streamrip package
                 web_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "index.html")
@@ -335,6 +338,46 @@ class SSEServer:
                     from fastapi.responses import FileResponse
                     return FileResponse(js_path, media_type="application/javascript")
                 return {"error": "JS file not found"}
+            
+            # Get downloads folder from config
+            downloads_folder = os.path.expanduser("~/StreamripDownloads")  # Default
+            try:
+                from .config import Config, DEFAULT_CONFIG_PATH
+                config = Config(DEFAULT_CONFIG_PATH)
+                downloads_folder = config.session.downloads.folder
+            except Exception:
+                pass  # Use default if config loading fails
+            
+            # Add cover art API endpoints
+            add_cover_api_endpoints(self.app, downloads_folder)
+
+            # Serve the radio player HTML
+            @self.app.get("/radio")
+            async def serve_radio_player():
+                radio_html_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "radio.html")
+                if os.path.exists(radio_html_path):
+                    return FileResponse(radio_html_path, media_type="text/html")
+                else:
+                    # Fallback - serve inline HTML
+                    return HTMLResponse(RADIO_PLAYER_HTML)
+                
+            @self.app.get("/api/radio/info")
+            async def radio_info():
+                return {
+                    "name": "StreamRip Radio",
+                    "version": "1.0.0",
+                    "endpoints": {
+                        "player": "/radio",
+                        "cover_lookup": "/api/cover",
+                        "cover_search": "/api/cover/search",
+                        "cover_stats": "/api/cover/stats"
+                    },
+                    "instructions": {
+                        "setup": "Update the JavaScript config in /radio with your Icecast server details",
+                        "icecast_url": "http://your-server:8000",
+                        "stream_url": "http://your-server:8000/your-stream.ogg"
+                    }
+                }
             
         except ImportError:
             raise ImportError("FastAPI not available. Install with: pip install fastapi uvicorn")
