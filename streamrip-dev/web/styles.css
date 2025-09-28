@@ -1,0 +1,328 @@
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+    padding: 20px;
+}
+
+.container { 
+    max-width: 1400px; 
+    margin: 0 auto; 
+}
+
+.header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.header h1 {
+    font-size: 2rem;
+    color: #4a5568;
+    margin-bottom: 10px;
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-weight: 600;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.connected { 
+    background: #10b981; 
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.section {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #4f46e5;
+    padding-bottom: 8px;
+}
+
+/* Download Form Styles */
+#lastfmForm {
+    display: grid;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+#lastfmForm label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 5px;
+    display: block;
+}
+
+#lastfmForm input, #lastfmForm select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 14px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+#lastfmForm button {
+    padding: 12px 24px;
+    background: linear-gradient(90deg, #4f46e5, #7c3aed);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+#downloadNotification {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 6px;
+    display: none;
+}
+
+.status-success { 
+    background: #d1fae5; 
+    color: #065f46; 
+}
+
+.status-error { 
+    background: #fee2e2; 
+    color: #991b1b; 
+}
+
+/* Playlist Container - Spreadsheet Style */
+.playlist-container {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.playlist-header {
+    background: #f8fafc;
+    padding: 12px 15px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.playlist-title {
+    font-weight: 600;
+    color: #374151;
+    font-size: 1.1rem;
+}
+
+.playlist-status {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-downloading { 
+    background: #dbeafe; 
+    color: #1e40af; 
+}
+
+.status-completed { 
+    background: #d1fae5; 
+    color: #065f46; 
+}
+
+.status-failed { 
+    background: #fee2e2; 
+    color: #991b1b; 
+}
+
+.status-resolving { 
+    background: #fef3c7; 
+    color: #92400e; 
+}
+
+.playlist-progress {
+    padding: 8px 15px;
+    background: #fafafa;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4f46e5, #7c3aed);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.playlist-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    font-size: 0.85rem;
+}
+
+.playlist-stat {
+    text-align: center;
+}
+
+.playlist-stat-number {
+    font-weight: 700;
+    color: #4f46e5;
+}
+
+.playlist-stat-label {
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+/* Tracks Table - Spreadsheet Style */
+.tracks-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tracks-table th {
+    background: #f1f5f9;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #475569;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+.tracks-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.tracks-table tr:hover {
+    background: #f8fafc;
+}
+
+.track-title {
+    font-weight: 500;
+    color: #1f2937;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.track-artist {
+    color: #6b7280;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.track-status {
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.track-progress {
+    width: 80px;
+}
+
+.track-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.track-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4f46e5, #7c3aed);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.track-progress-text {
+    font-size: 0.7rem;
+    color: #6b7280;
+    text-align: center;
+    margin-top: 2px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 20px;
+    color: #6b7280;
+}
+
+.empty-icon {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+    .form-row { 
+        grid-template-columns: 1fr; 
+    }
+    
+    .tracks-table { 
+        font-size: 0.8rem; 
+    }
+    
+    .tracks-table th, .tracks-table td { 
+        padding: 4px 8px; 
+    }
+}

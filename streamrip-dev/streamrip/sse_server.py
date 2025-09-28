@@ -7,6 +7,9 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Any, AsyncGenerator, Dict, Optional
 from uuid import uuid4
+from pydantic import BaseModel
+import uuid
+from fastapi.staticfiles import StaticFiles
 
 # Suppress uvicorn logging
 for logger_name in ["uvicorn", "uvicorn.access", "uvicorn.error", "fastapi", "starlette"]:
@@ -60,6 +63,11 @@ class SearchEvent:
         if self.timestamp == 0.0:
             self.timestamp = time.time()
 
+@dataclass
+class LastfmRequest(BaseModel):
+    url: str
+    source: Optional[str] = None
+    fallback_source: Optional[str] = None
 
 class SSEManager:
     """Simplified SSE manager for progress events."""
@@ -157,6 +165,10 @@ class SSEManager:
                     await self.broadcast_event("playlist_update", asdict(playlist))
 
 
+# Add after SSEManager class
+active_downloads: Dict[str, asyncio.Task] = {}
+
+
 class SSEServer:
     """FastAPI server for SSE endpoints."""
     
@@ -207,41 +219,122 @@ class SSEServer:
 
             @self.app.get("/")
             async def serve_ui():
-                """Serve a simple status page with connection info."""
+                """Serve the web UI from file."""
+                import os
+                from fastapi.responses import FileResponse
+                
+                # Look for web/index.html relative to the streamrip package
+                web_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "index.html")
+                
+                if os.path.exists(web_path):
+                    return FileResponse(web_path, media_type="text/html")
+                
+                # Fallback to simple status page if file not found
                 html = f"""<!DOCTYPE html>
-<html>
-<head>
-    <title>Streamrip Progress Server</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }}
-        .container {{ background: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; }}
-        .status {{ background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0; }}
-        .endpoint {{ background: #f0f0f0; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: monospace; }}
-        h1 {{ color: #333; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>ðŸŽµ Streamrip Progress Server</h1>
-        <div class="status">
-            <strong>âœ… Server Running</strong><br>
-            Host: {self.host}<br>
-            Port: {self.port}
-        </div>
-        
-        <h3>Available Endpoints:</h3>
-        <div class="endpoint">GET /events - SSE stream for progress updates</div>
-        <div class="endpoint">GET /health - Server health check</div>
-        
-        <h3>Usage:</h3>
-        <p>This server provides real-time progress updates for Streamrip downloads via Server-Sent Events (SSE).</p>
-        <p>Connect your client application to <code>http://{self.host}:{self.port}/events</code></p>
-        
-        <p><strong>Note:</strong> Start a download with <code>rip url "your-url"</code> to see progress events.</p>
-    </div>
-</body>
-</html>"""
+            <html>
+            <head>
+                <title>Streamrip Progress Server</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }}
+                    .container {{ background: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; }}
+                    .status {{ background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0; }}
+                    .endpoint {{ background: #f0f0f0; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: monospace; }}
+                    h1 {{ color: #333; }}
+                    .error {{ background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 5px; margin: 20px 0; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🎵 Streamrip Progress Server</h1>
+                    <div class="error">
+                        <strong>⚠️ Web UI Not Found</strong><br>
+                        Could not find web/index.html at: {web_path}
+                    </div>
+                    <div class="status">
+                        <strong>✅ Server Running</strong><br>
+                        Host: {self.host}<br>
+                        Port: {self.port}
+                    </div>
+                    
+                    <h3>Available Endpoints:</h3>
+                    <div class="endpoint">GET /events - SSE stream for progress updates</div>
+                    <div class="endpoint">POST /api/lastfm - Submit Last.fm download</div>
+                    <div class="endpoint">GET /api/downloads - List active downloads</div>
+                    <div class="endpoint">GET /health - Server health check</div>
+                </div>
+            </body>
+            </html>"""
                 return HTMLResponse(html)
+
+            @self.app.post("/api/lastfm")
+            async def submit_lastfm_download(request: LastfmRequest):
+                task_id = str(uuid.uuid4())
+                
+                # Import here to avoid circular imports
+                from .rip.main import Main
+                from .config import Config
+                
+                async def execute_download():
+                    try:
+                        # Load config
+                        from .config import DEFAULT_CONFIG_PATH
+                        config = Config(DEFAULT_CONFIG_PATH)
+                        
+                        # Apply lastfm source overrides if provided
+                        if request.source:
+                            config.session.lastfm.source = request.source
+                        if request.fallback_source:
+                            config.session.lastfm.fallback_source = request.fallback_source
+                        
+                        async with Main(config) as main:
+                            await main.resolve_lastfm(request.url)
+                            await main.rip()
+                            
+                    except Exception as e:
+                        logger.error(f"Last.fm download task {task_id} failed: {e}")
+                    finally:
+                        active_downloads.pop(task_id, None)
+                
+                # Start background task
+                task = asyncio.create_task(execute_download())
+                active_downloads[task_id] = task
+                
+                return {"task_id": task_id, "status": "started"}
+
+            @self.app.get("/api/downloads")
+            async def list_downloads():
+                return {
+                    "active": list(active_downloads.keys()),
+                    "total_clients": len(sse_manager.clients),
+                    "total_playlists": len(sse_manager.playlists),
+                    "total_tracks": len(sse_manager.tracks)
+                }
+
+            @self.app.delete("/api/downloads/{task_id}")
+            async def cancel_download(task_id: str):
+                if task_id in active_downloads:
+                    active_downloads[task_id].cancel()
+                    active_downloads.pop(task_id, None)
+                    return {"status": "cancelled"}
+                return {"error": "task not found"}, 404
+            
+            @self.app.get("/styles.css")
+            async def serve_css():
+                import os
+                css_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "styles.css")
+                if os.path.exists(css_path):
+                    from fastapi.responses import FileResponse
+                    return FileResponse(css_path, media_type="text/css")
+                return {"error": "CSS file not found"}
+
+            @self.app.get("/script.js")
+            async def serve_js():
+                import os
+                js_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "script.js")
+                if os.path.exists(js_path):
+                    from fastapi.responses import FileResponse
+                    return FileResponse(js_path, media_type="application/javascript")
+                return {"error": "JS file not found"}
             
         except ImportError:
             raise ImportError("FastAPI not available. Install with: pip install fastapi uvicorn")
