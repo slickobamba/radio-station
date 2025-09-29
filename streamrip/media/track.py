@@ -19,13 +19,11 @@ from .semaphore import global_download_semaphore
 
 # Import SSE components if available
 try:
-    from ..sse_server import sse_manager, TrackEvent
+    from admin_service.sse_manager import sse_manager, TrackEvent
     SSE_AVAILABLE = True
 except ImportError:
     SSE_AVAILABLE = False
     sse_manager = None
-
-logger = logging.getLogger("streamrip")
 
 
 @dataclass(slots=True)

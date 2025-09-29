@@ -20,12 +20,11 @@ from .console import console
 
 # Import SSE components if available
 try:
-    from .sse_server import sse_manager, TrackEvent
+    from admin_service.sse_manager import sse_manager, TrackEvent
     SSE_AVAILABLE = True
 except ImportError:
     SSE_AVAILABLE = False
     sse_manager = None
-
 
 class ProgressManager:
     def __init__(self):

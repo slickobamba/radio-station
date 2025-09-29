@@ -27,7 +27,7 @@ from .track import Track
 
 # SSE integration
 try:
-    from ..sse_server import sse_manager, PlaylistEvent, SearchEvent, TrackEvent
+    from admin_service.sse_manager import sse_manager, PlaylistEvent, SearchEvent, TrackEvent
     SSE_AVAILABLE = True
 except ImportError:
     SSE_AVAILABLE = False
