@@ -19,9 +19,11 @@ class CoverArtLookup:
         if not self.db_path.exists():
             raise FileNotFoundError(f"Downloads database not found at {self.db_path}")
         
-        self.cache_db = "cover_cache.db"
+        # Put cache DB in same directory as this Python file
+        radio_service_dir = Path(__file__).parent
+        self.cache_db = str(radio_service_dir / "cover_cache.db")
         self.init_cache_db()
-    
+
     def init_cache_db(self):
         """Initialize SQLite cache for faster lookups."""
         with sqlite3.connect(self.cache_db) as conn:
