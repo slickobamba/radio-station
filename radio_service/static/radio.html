@@ -332,10 +332,10 @@
                 
                 // Configuration - Update these values
                 this.config = {
-                    icecastUrl: 'http://your-icecast-server:8000',
-                    streamUrl: 'http://your-icecast-server:8000/your-stream.ogg',
-                    coverApiUrl: '/api/cover', // Your FastAPI cover lookup endpoint
-                    pollInterval: 3000 // Poll every 3 seconds
+                    icecastUrl: 'http://159.65.37.196:8002',
+                    streamUrl: 'http://159.65.37.196:8002/mystream.ogg',
+                    coverApiUrl: '/api/cover',
+                    pollInterval: 3000
                 };
                 
                 this.initElements();
@@ -362,19 +362,16 @@
             }
 
             setupEventListeners() {
-                // Play/Pause button
                 this.elements.playButton.addEventListener('click', () => {
                     this.togglePlayback();
                 });
 
-                // Volume control
                 this.elements.volumeSlider.addEventListener('input', (e) => {
                     const volume = e.target.value;
                     this.audio.volume = volume / 100;
                     this.elements.volumeDisplay.textContent = volume + '%';
                 });
 
-                // Audio events
                 this.audio.addEventListener('play', () => {
                     this.isPlaying = true;
                     this.elements.playButton.textContent = '⏸';
@@ -420,7 +417,6 @@
 
             async pollMetadata() {
                 try {
-                    // Fetch metadata from Icecast
                     const metadataResponse = await fetch(`${this.config.icecastUrl}/status-json.xsl`);
                     
                     if (!metadataResponse.ok) {
@@ -438,7 +434,6 @@
                     console.error('Metadata polling error:', error);
                     this.updateConnectionStatus(false);
                     
-                    // Don't show error unless connection has been working before
                     if (this.currentTrack) {
                         this.showError('Connection to radio stream lost');
                     }
@@ -447,14 +442,12 @@
 
             parseIcecastMetadata(data) {
                 try {
-                    // Handle Icecast status-json.xsl format
                     if (data.icestats && data.icestats.source) {
                         const sources = Array.isArray(data.icestats.source) 
                             ? data.icestats.source 
                             : [data.icestats.source];
                         
                         for (const source of sources) {
-                            // Find our stream mountpoint
                             if (source.listenurl && source.listenurl.includes(this.getStreamMountpoint())) {
                                 return this.extractTrackInfo(source);
                             }
@@ -468,21 +461,11 @@
             }
 
             extractTrackInfo(source) {
-                const titleField = source.title || source.yp_currently_playing || '';
+                // Your Icecast provides separate artist and title fields
+                const artist = source.artist ? source.artist.trim() : 'Unknown Artist';
+                const title = source.title ? source.title.trim() : 'Unknown Title';
                 
-                if (!titleField) return null;
-
-                let artist, title;
-                
-                // Parse "Artist - Title" format
-                if (titleField.includes(' - ')) {
-                    const parts = titleField.split(' - ');
-                    artist = parts[0].trim();
-                    title = parts.slice(1).join(' - ').trim();
-                } else {
-                    artist = 'Unknown Artist';
-                    title = titleField.trim();
-                }
+                if (!title) return null;
 
                 return {
                     artist,
@@ -496,17 +479,15 @@
             }
 
             getStreamMountpoint() {
-                // Extract mountpoint from stream URL
                 try {
                     const url = new URL(this.config.streamUrl);
                     return url.pathname;
                 } catch {
-                    return '/stream';
+                    return '/mystream.ogg';
                 }
             }
 
             async handleMetadataUpdate(metadata) {
-                // Check if this is a new track
                 const trackId = `${metadata.artist}|${metadata.title}`.toLowerCase();
                 const isNewTrack = !this.currentTrack || this.currentTrack.id !== trackId;
 
@@ -518,7 +499,6 @@
                     this.hideError();
                 }
 
-                // Always update listener count
                 this.elements.listenerCount.textContent = metadata.listeners;
             }
 
@@ -527,16 +507,13 @@
                 this.elements.trackArtist.textContent = metadata.artist || 'Unknown Artist';
                 this.elements.trackAlbum.textContent = metadata.album || '';
                 
-                // Update page title
                 document.title = `${metadata.artist} - ${metadata.title} | StreamRip Radio`;
             }
 
             async fetchAndDisplayCover(metadata) {
-                // Set loading state
                 this.elements.albumArt.classList.add('loading');
                 
                 try {
-                    // Call your FastAPI cover lookup endpoint
                     const coverResponse = await fetch(
                         `${this.config.coverApiUrl}?artist=${encodeURIComponent(metadata.artist)}&title=${encodeURIComponent(metadata.title)}&album=${encodeURIComponent(metadata.album || '')}`
                     );
@@ -580,13 +557,11 @@
             }
 
             addToRecentTracks(metadata) {
-                // Add to recent tracks list
                 this.recentTracks.unshift({
                     ...metadata,
                     timestamp: Date.now()
                 });
 
-                // Keep only last 5 tracks
                 this.recentTracks = this.recentTracks.slice(0, 5);
                 this.updateRecentTracksDisplay();
             }
@@ -647,12 +622,10 @@
             }
         }
 
-        // Initialize player when page loads
         document.addEventListener('DOMContentLoaded', () => {
             window.radioPlayer = new RadioPlayer();
         });
 
-        // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
             if (window.radioPlayer) {
                 window.radioPlayer.destroy();
