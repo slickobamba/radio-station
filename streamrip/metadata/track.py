@@ -33,7 +33,6 @@ class TrackMetadata:
     composer: str | None
     isrc: str | None = None
     lyrics: str | None = ""
-    cover_urls: dict[str, str] | None = None  # NEW: Store cover art URLs
 
     @classmethod
     def from_qobuz(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata | None:
@@ -68,12 +67,6 @@ class TrackMetadata:
         # Is the info included?
         explicit = False
 
-        # Extract cover URLs from album metadata
-        cover_urls = {}
-        for size, url, path in album.covers._covers:
-            if url:
-                cover_urls[size] = url
-
         info = TrackInfo(
             id=track_id,
             quality=album.info.quality,
@@ -91,7 +84,6 @@ class TrackMetadata:
             discnumber=discnumber,
             composer=composer,
             isrc=isrc,
-            cover_urls=cover_urls if cover_urls else None,
         )
 
     @classmethod
@@ -107,13 +99,6 @@ class TrackMetadata:
         tracknumber = typed(resp["track_position"], int)
         discnumber = typed(resp["disk_number"], int)
         composer = None
-
-        # Extract cover URLs from album metadata
-        cover_urls = {}
-        for size, url, path in album.covers._covers:
-            if url:
-                cover_urls[size] = url
-
         info = TrackInfo(
             id=track_id,
             quality=album.info.quality,
@@ -131,7 +116,6 @@ class TrackMetadata:
             discnumber=discnumber,
             composer=composer,
             isrc=isrc,
-            cover_urls=cover_urls if cover_urls else None,
         )
 
     @classmethod
@@ -148,12 +132,6 @@ class TrackMetadata:
         title = typed(track["title"].strip(), str)
         artist = typed(track["user"]["username"], str)
         tracknumber = 1
-
-        # Extract cover URLs from album metadata
-        cover_urls = {}
-        for size, url, path in album.covers._covers:
-            if url:
-                cover_urls[size] = url
 
         info = TrackInfo(
             id=track_id,
@@ -172,7 +150,6 @@ class TrackMetadata:
             discnumber=0,
             composer=None,
             isrc=isrc,
-            cover_urls=cover_urls if cover_urls else None,
         )
 
     @classmethod
@@ -218,12 +195,6 @@ class TrackMetadata:
         else:
             sampling_rate = bit_depth = None
 
-        # Extract cover URLs from album metadata
-        cover_urls = {}
-        for size, url, path in album.covers._covers:
-            if url:
-                cover_urls[size] = url
-
         info = TrackInfo(
             id=item_id,
             quality=quality,
@@ -242,7 +213,6 @@ class TrackMetadata:
             composer=None,
             isrc=isrc,
             lyrics=lyrics,
-            cover_urls=cover_urls if cover_urls else None,
         )
 
     @classmethod

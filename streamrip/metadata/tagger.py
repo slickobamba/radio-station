@@ -40,11 +40,6 @@ MP4_KEYS = (
     None,
     None,
     "----:com.apple.iTunes:ISRC",
-    # Cover URL custom fields for MP4
-    "----:com.apple.iTunes:COVER_URL_ORIGINAL",
-    "----:com.apple.iTunes:COVER_URL_LARGE", 
-    "----:com.apple.iTunes:COVER_URL_SMALL",
-    "----:com.apple.iTunes:COVER_URL_THUMBNAIL",
 )
 
 MP3_KEYS = (
@@ -69,11 +64,6 @@ MP3_KEYS = (
     None,
     None,
     id3.TSRC,
-    # Cover URL custom fields for MP3 (using TXXX frames)
-    id3.TXXX,
-    id3.TXXX,
-    id3.TXXX,
-    id3.TXXX,
 )
 
 METADATA_TYPES = (
@@ -98,11 +88,6 @@ METADATA_TYPES = (
     "disctotal",
     "date",
     "isrc",
-    # Cover URL fields
-    "cover_url_original",
-    "cover_url_large",
-    "cover_url_small",
-    "cover_url_thumbnail",
 )
 
 
@@ -162,13 +147,6 @@ class Container(Enum):
                 text = f"{meta.tracknumber}/{meta.album.tracktotal}"
             elif k == "discnumber":
                 text = f"{meta.discnumber}/{meta.album.disctotal}"
-            elif k.startswith("cover_url_"):
-                # Handle cover URL TXXX frames for MP3
-                size = k.replace("cover_url_", "")
-                if meta.cover_urls and size in meta.cover_urls:
-                    frame = v(encoding=3, desc=f"COVER_URL_{size.upper()}", text=meta.cover_urls[size])
-                    out.append((f"TXXX:{frame.desc}", frame))
-                continue
             else:
                 text = self._attr_from_meta(meta, k)
 
@@ -188,13 +166,6 @@ class Container(Enum):
                 # we have to pass in the actual bytes to mutagen
                 # See mutagen.MP4Tags.__render_freeform
                 text = meta.isrc.encode("utf-8")
-            elif k.startswith("cover_url_"):
-                # Handle cover URL freeform values for MP4
-                size = k.replace("cover_url_", "")
-                if meta.cover_urls and size in meta.cover_urls:
-                    text = meta.cover_urls[size].encode("utf-8")
-                else:
-                    continue
             else:
                 text = self._attr_from_meta(meta, k)
 
@@ -214,12 +185,6 @@ class Container(Enum):
             "isrc",
             "lyrics",
         }
-        
-        # Handle cover URL attributes
-        if attr.startswith("cover_url_") and meta.cover_urls:
-            size = attr.replace("cover_url_", "")
-            return meta.cover_urls.get(size)
-        
         if attr in in_trackmetadata:
             if attr == "album":
                 return meta.album.album
