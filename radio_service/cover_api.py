@@ -122,25 +122,6 @@ class CoverArtLookup:
                 }
         
         return None
-    
-    def get_cover_by_track_id(self, track_id: str) -> Optional[Dict[str, Any]]:
-        """Get cover URL directly by track ID."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            row = conn.execute(
-                "SELECT track_id, artist, title, cover_url FROM covers WHERE track_id = ?",
-                (track_id,)
-            ).fetchone()
-            
-            if row and row["cover_url"]:
-                return {
-                    "track_id": row["track_id"],
-                    "artist": row["artist"],
-                    "title": row["title"],
-                    "cover_url": row["cover_url"],
-                    "source": "database"
-                }
-        return None
 
 
 # Global cover lookup instance
@@ -189,32 +170,6 @@ def add_cover_api_endpoints(app, downloads_db_path: str):
                 return {
                     "found": False,
                     "message": f"No cover art found for '{artist} - {title}'"
-                }
-                
-        except Exception as e:
-            logger.error(f"Cover lookup error: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error during cover lookup")
-    
-    @app.get("/api/cover/by-id/{track_id}")
-    async def lookup_cover_by_id(track_id: str):
-        """Look up cover art directly by track ID."""
-        try:
-            cover_lookup = get_cover_lookup(downloads_db_path)
-            result = cover_lookup.get_cover_by_track_id(track_id)
-            
-            if result and result.get('cover_url'):
-                return {
-                    "found": True,
-                    "cover_url": result['cover_url'],
-                    "track_id": result['track_id'],
-                    "artist": result.get('artist'),
-                    "title": result.get('title'),
-                    "source": "database"
-                }
-            else:
-                return {
-                    "found": False,
-                    "message": f"No cover art found for track ID {track_id}"
                 }
                 
         except Exception as e:

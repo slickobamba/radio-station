@@ -67,25 +67,8 @@ class DatabaseBase(DatabaseInterface):
         assert path
 
         self.path = path
-
-        # Create table if it doesn't exist (not just if file doesn't exist)
-        if not self._table_exists():
-            self.create()
+        self.create()
     
-    def _table_exists(self) -> bool:
-        """Check if this table exists in the database."""
-        if not os.path.exists(self.path):
-            return False
-        
-        try:
-            with sqlite3.connect(self.path) as conn:
-                result = conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-                    (self.name,)
-                ).fetchone()
-                return result is not None
-        except sqlite3.Error:
-            return False
 
     def create(self):
         """Create a database."""
@@ -94,7 +77,7 @@ class DatabaseBase(DatabaseInterface):
                 f"{key} {' '.join(map(str.upper, props))} NOT NULL"
                 for key, props in self.structure.items()
             )
-            command = f"CREATE TABLE {self.name} ({params})"
+            command = f"CREATE TABLE IF NOT EXISTS {self.name} ({params})"
 
             logger.debug("executing %s", command)
 
@@ -212,7 +195,7 @@ class Covers(DatabaseBase):
                 f"{key} {' '.join(map(str.upper, props))} NOT NULL"
                 for key, props in self.structure.items()
             )
-            command = f"CREATE TABLE {self.name} ({params})"
+            command = f"CREATE TABLE IF NOT EXISTS {self.name} ({params})"
             
             logger.debug("executing %s", command)
             conn.execute(command)
