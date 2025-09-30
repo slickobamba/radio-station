@@ -29,17 +29,25 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     
-    # Get downloads folder from config
-    downloads_folder = os.path.expanduser("~/StreamripDownloads")  # Default
+    # Get downloads database path from config
+    downloads_db_path = None
     try:
         from streamrip.config import Config, DEFAULT_CONFIG_PATH
         config = Config(DEFAULT_CONFIG_PATH)
-        downloads_folder = config.session.downloads.folder
-    except Exception:
-        logger.warning("Could not load config, using default downloads folder")
+        downloads_db_path = config.session.database.downloads_path
+        logger.info(f"Using downloads database at: {downloads_db_path}")
+    except Exception as e:
+        logger.error(f"Could not load config: {e}")
+        # Try default path as fallback
+        from streamrip.config import APP_DIR
+        downloads_db_path = os.path.join(APP_DIR, "downloads.db")
+        logger.warning(f"Using default downloads database path: {downloads_db_path}")
     
     # Add cover art API endpoints
-    add_cover_api_endpoints(app, downloads_folder)
+    if downloads_db_path and os.path.exists(downloads_db_path):
+        add_cover_api_endpoints(app, downloads_db_path)
+    else:
+        logger.error(f"Downloads database not found at {downloads_db_path}")
     
     # Serve radio player UI
     @app.get("/")
@@ -69,9 +77,10 @@ def create_app() -> FastAPI:
                 <p>Radio player UI not found. Place your radio player HTML in <code>radio_service/static/radio.html</code></p>
                 <h3>Available Endpoints:</h3>
                 <ul>
-                    <li><code>GET /api/cover</code> - Cover art lookup</li>
-                    <li><code>GET /api/cover/search</code> - Search for tracks</li>
-                    <li><code>GET /api/cover/stats</code> - Cache statistics</li>
+                    <li><code>GET /api/cover</code> - Cover art lookup by metadata</li>
+                    <li><code>GET /api/cover/by-id/{track_id}</code> - Cover art lookup by track ID</li>
+                    <li><code>GET /api/cover/stats</code> - Database statistics</li>
+                    <li><code>DELETE /api/cover/cache</code> - Clear lookup cache</li>
                     <li><code>GET /api/radio/info</code> - Radio info</li>
                 </ul>
             </div>
@@ -86,16 +95,20 @@ def create_app() -> FastAPI:
         return {
             "name": "StreamRip Radio",
             "version": "1.0.0",
+            "database_path": downloads_db_path,
+            "database_exists": os.path.exists(downloads_db_path) if downloads_db_path else False,
             "endpoints": {
                 "player": "/radio",
                 "cover_lookup": "/api/cover",
-                "cover_search": "/api/cover/search",
-                "cover_stats": "/api/cover/stats"
+                "cover_by_id": "/api/cover/by-id/{track_id}",
+                "cover_stats": "/api/cover/stats",
+                "clear_cache": "/api/cover/cache (DELETE)"
             },
             "instructions": {
                 "setup": "Update the JavaScript config in your radio.html with your Icecast server details",
                 "icecast_url": "http://your-server:8000",
-                "stream_url": "http://your-server:8000/your-stream.ogg"
+                "stream_url": "http://your-server:8000/your-stream.ogg",
+                "note": "Cover art lookups now use the streamrip downloads database"
             }
         }
     

@@ -68,8 +68,24 @@ class DatabaseBase(DatabaseInterface):
 
         self.path = path
 
-        if not os.path.exists(self.path):
+        # Create table if it doesn't exist (not just if file doesn't exist)
+        if not self._table_exists():
             self.create()
+    
+    def _table_exists(self) -> bool:
+        """Check if this table exists in the database."""
+        if not os.path.exists(self.path):
+            return False
+        
+        try:
+            with sqlite3.connect(self.path) as conn:
+                result = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    (self.name,)
+                ).fetchone()
+                return result is not None
+        except sqlite3.Error:
+            return False
 
     def create(self):
         """Create a database."""
@@ -178,10 +194,86 @@ class Failed(DatabaseBase):
     }
 
 
+class Covers(DatabaseBase):
+    """A table that stores cover URLs for downloaded tracks."""
+
+    name = "covers"
+    structure: Final[dict] = {
+        "track_id": ["text", "primary key"],
+        "artist": ["text"],
+        "title": ["text"],
+        "cover_url": ["text"],
+    }
+
+    def create(self):
+        """Create the covers table with indices."""
+        with sqlite3.connect(self.path) as conn:
+            params = ", ".join(
+                f"{key} {' '.join(map(str.upper, props))} NOT NULL"
+                for key, props in self.structure.items()
+            )
+            command = f"CREATE TABLE {self.name} ({params})"
+            
+            logger.debug("executing %s", command)
+            conn.execute(command)
+            
+            # Create index for artist/title searches
+            conn.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_artist_title ON {self.name}(artist, title)"
+            )
+            logger.debug("Created index idx_artist_title on covers table")
+
+    def get_cover_url(self, track_id: str) -> str | None:
+        """Get cover URL for a track ID.
+        
+        :param track_id: Track ID to lookup
+        :return: Cover URL if found, None otherwise
+        """
+        with sqlite3.connect(self.path) as conn:
+            result = conn.execute(
+                f"SELECT cover_url FROM {self.name} WHERE track_id = ?",
+                (track_id,)
+            ).fetchone()
+            return result[0] if result else None
+
+    def get_cover_by_metadata(self, artist: str, title: str) -> tuple[str, str, str] | None:
+        """Get track_id and cover URL by artist and title.
+        
+        :param artist: Artist name
+        :param title: Track title
+        :return: Tuple of (track_id, artist, title, cover_url) if found, None otherwise
+        """
+        with sqlite3.connect(self.path) as conn:
+            # Case-insensitive search
+            result = conn.execute(
+                f"SELECT track_id, artist, title, cover_url FROM {self.name} "
+                f"WHERE LOWER(artist) = LOWER(?) AND LOWER(title) = LOWER(?)",
+                (artist, title)
+            ).fetchone()
+            return result if result else None
+
+    def add_cover(self, track_id: str, artist: str, title: str, cover_url: str):
+        """Add or update a cover URL for a track.
+        
+        :param track_id: Track ID
+        :param artist: Artist name
+        :param title: Track title
+        :param cover_url: Cover URL
+        """
+        with sqlite3.connect(self.path) as conn:
+            # Use INSERT OR REPLACE to handle updates
+            conn.execute(
+                f"INSERT OR REPLACE INTO {self.name} (track_id, artist, title, cover_url) VALUES (?, ?, ?, ?)",
+                (track_id, artist, title, cover_url)
+            )
+            logger.debug("Added cover URL for track %s (%s - %s): %s", track_id, artist, title, cover_url)
+
+
 @dataclass(slots=True)
 class Database:
     downloads: DatabaseInterface
     failed: DatabaseInterface
+    covers: DatabaseInterface
 
     def downloaded(self, item_id: str) -> bool:
         return self.downloads.contains(id=item_id)
@@ -194,3 +286,20 @@ class Database:
 
     def set_failed(self, source: str, media_type: str, id: str):
         self.failed.add((source, media_type, id))
+
+    def get_cover_url(self, track_id: str) -> str | None:
+        """Get cover URL for a track."""
+        if isinstance(self.covers, Covers):
+            return self.covers.get_cover_url(track_id)
+        return None
+
+    def get_cover_by_metadata(self, artist: str, title: str) -> tuple[str, str, str, str] | None:
+        """Get cover info by artist and title."""
+        if isinstance(self.covers, Covers):
+            return self.covers.get_cover_by_metadata(artist, title)
+        return None
+
+    def set_cover_url(self, track_id: str, artist: str, title: str, cover_url: str):
+        """Set cover URL for a track."""
+        if isinstance(self.covers, Covers):
+            self.covers.add_cover(track_id, artist, title, cover_url)

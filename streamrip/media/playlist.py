@@ -74,6 +74,19 @@ class PendingPlaylistTrack(Pending):
                 self.client.get_downloadable(self.id, quality),
             )
 
+            # Write cover URL to database after downloading
+            # Get the large cover URL from the Covers object
+            try:
+                _, large_url, _ = album.covers.get_size("large")
+                if large_url:
+                    # Extract artist and title for database storage
+                    artist = meta.artist
+                    title = meta.title
+                    self.db.set_cover_url(self.id, artist, title, large_url)
+                    logger.debug(f"Saved cover URL for track {self.id} ({artist} - {title})")
+            except Exception as e:
+                logger.warning(f"Could not save cover URL for track {self.id}: {e}")
+
             return Track(
                 meta, downloadable, self.config, self.folder,
                 embedded_cover_path, self.db, playlist_id=self.playlist_id
