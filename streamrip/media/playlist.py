@@ -184,8 +184,7 @@ class PendingPlaylist(Pending):
             meta = PlaylistMetadata.from_resp(resp, self.client.source)
             
             name = meta.name
-            parent = self.config.session.downloads.folder
-            folder = os.path.join(parent, clean_filepath(name))
+            folder = self.config.session.downloads.folder
             playlist_id = str(uuid4())
             
             tracks = [
@@ -256,8 +255,7 @@ class PendingLastfmPlaylist(Pending):
                 await sse_manager.update_search(search_event)
 
         # Create playlist
-        parent = self.config.session.downloads.folder
-        folder = os.path.join(parent, clean_filepath(playlist_title))
+        folder = self.config.session.downloads.folder
         
         tracks = [
             PendingPlaylistTrack(
