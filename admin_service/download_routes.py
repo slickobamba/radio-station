@@ -71,13 +71,4 @@ def create_download_router() -> APIRouter:
             "total_tracks": len(sse_manager.tracks)
         }
 
-    @router.delete("/downloads/{task_id}")
-    async def cancel_download(task_id: str):
-        """Cancel a download task."""
-        if task_id in active_downloads:
-            active_downloads[task_id].cancel()
-            active_downloads.pop(task_id, None)
-            return {"status": "cancelled"}
-        return {"error": "task not found", "status": 404}
-
     return router
