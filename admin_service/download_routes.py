@@ -26,6 +26,55 @@ class SpotifyRequest(BaseModel):
     source: Optional[str] = None
     fallback_source: Optional[str] = None
 
+async def delete_lastfm_playlist(
+    lastfm_url: str,
+    sessionid: str,
+    csrftoken: str,
+    username: str
+) -> bool:
+    
+    cookies = {
+        'sessionid': sessionid,
+        'csrftoken': csrftoken
+    }
+    
+    headers = {
+        'accept': 'text/html, */*; q=0.01',
+        'content-type': 'multipart/form-data; boundary=----WebKitFormBoundaryBGfmCRWgTDkstAt1',
+        'x-requested-with': 'XMLHttpRequest',
+        'referer': f'https://www.last.fm/user/{username}/playlists',
+        'origin': 'https://www.last.fm',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+    
+    body = (
+        '------WebKitFormBoundaryBGfmCRWgTDkstAt1\r\n'
+        'Content-Disposition: form-data; name="action"\r\n\r\n'
+        'delete\r\n'
+        '------WebKitFormBoundaryBGfmCRWgTDkstAt1\r\n'
+        'Content-Disposition: form-data; name="csrfmiddlewaretoken"\r\n\r\n'
+        f'{csrftoken}\r\n'
+        '------WebKitFormBoundaryBGfmCRWgTDkstAt1--\r\n'
+    )
+    
+    async with httpx.AsyncClient(cookies=cookies, headers=headers) as client:
+        try:
+            response = await client.post(
+                lastfm_url,
+                content=body,
+                timeout=10.0
+            )
+            
+            if response.status_code == 200:
+                return True
+            else:
+                logger.error(f"Failed to delete playlist {playlist_id}: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error deleting playlist {playlist_id}: {e}")
+            return False
+
 async def import_spotify_to_lastfm(
     spotify_url: str,
     sessionid: str,
@@ -49,8 +98,6 @@ async def import_spotify_to_lastfm(
     
     async with httpx.AsyncClient(cookies=cookies, headers=headers) as client:
         
-        logger.info(f"Importing Spotify playlist: {spotify_url}")
-        
         try:
             response = await client.post(
                 f"https://www.last.fm/user/{username}/playlists/import",
@@ -71,7 +118,6 @@ async def import_spotify_to_lastfm(
                 return None
             
             job_id = job_id_match.group(1)
-            logger.info(f"Import started (job: {job_id})")
 
 
         except httpx.TimeoutException:
@@ -99,7 +145,6 @@ async def import_spotify_to_lastfm(
                     if playlist_id_match:
                         playlist_id = playlist_id_match.group(1)
                         lastfm_url = f"https://www.last.fm/user/{username}/playlists/{playlist_id}"
-                        logger.info(f"Import complete: {lastfm_url}")
                         return lastfm_url
                     
                     logger.warning("Import complete but couldn't extract playlist ID")
@@ -147,8 +192,6 @@ def create_download_router() -> APIRouter:
                 if not lastfm_url:
                     logger.error(f"Failed to import Spotify playlist to Last.fm")
                     return
-                    
-                logger.error(f"Using Last.fm URL: {lastfm_url}")
                 
                 # Load config
                 config = Config(DEFAULT_CONFIG_PATH)
@@ -166,6 +209,16 @@ def create_download_router() -> APIRouter:
             except Exception as e:
                 logger.error(f"Last.fm download task {task_id} failed: {e}")
             finally:
+
+                # Cleanup: delete the playlist from Last.fm
+                if lastfm_url:
+                    await delete_lastfm_playlist(
+                        lastfm_url,
+                        LASTFM_SESSIONID,
+                        LASTFM_CSRFTOKEN,
+                        LASTFM_USERNAME
+                    )
+
                 active_downloads.pop(task_id, None)
         
         # Start background task
