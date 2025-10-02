@@ -20,14 +20,14 @@ class StreamripMonitor {
     }
 
     setupForm() {
-        document.getElementById('lastfmForm').addEventListener('submit', async (e) => {
+        document.getElementById('spotifyForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const formData = new FormData(e.target);
             const url = formData.get('url');
             
             if (!url) {
-                this.showNotification('Please enter a Last.fm playlist URL', 'error');
+                this.showNotification('Please enter a spotify playlist URL', 'error');
                 return;
             }
             
@@ -38,7 +38,7 @@ class StreamripMonitor {
             };
             
             try {
-                const response = await fetch('/api/lastfm', {
+                const response = await fetch('/api/spotify', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(requestData)

@@ -74,20 +74,20 @@ body {
 }
 
 /* Download Form Styles */
-#lastfmForm {
+#spotifyForm {
     display: grid;
     gap: 15px;
     margin-bottom: 20px;
 }
 
-#lastfmForm label {
+#spotifyForm label {
     font-weight: 600;
     color: #374151;
     margin-bottom: 5px;
     display: block;
 }
 
-#lastfmForm input, #lastfmForm select {
+#spotifyForm input, #spotifyForm select {
     width: 100%;
     padding: 12px;
     border-radius: 8px;
@@ -101,7 +101,7 @@ body {
     gap: 15px;
 }
 
-#lastfmForm button {
+#spotifyForm button {
     padding: 12px 24px;
     background: linear-gradient(90deg, #4f46e5, #7c3aed);
     color: white;
