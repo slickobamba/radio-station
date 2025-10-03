@@ -1,0 +1,22 @@
+[Unit]
+Description=Mama-Radio Radio Service
+After=network.target
+
+[Service]
+Type=notify
+User=dirk
+Group=dirk
+WorkingDirectory=/home/dirk/backend
+Environment="PATH=/home/dirk/backend/venv/bin"
+ExecStart=/home/dirk/backend/venv/bin/gunicorn \
+    --config /home/dirk/backend/config/gunicorn_radio.py \
+    radio_service.server:app
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

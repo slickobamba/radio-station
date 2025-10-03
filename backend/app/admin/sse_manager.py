@@ -10,7 +10,6 @@ from uuid import uuid4
 
 logger = logging.getLogger("streamrip.sse")
 
-
 @dataclass
 class TrackEvent:
     track_id: str
